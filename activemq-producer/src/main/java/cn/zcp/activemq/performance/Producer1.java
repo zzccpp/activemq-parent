@@ -28,12 +28,12 @@ public class Producer1 {
         Session session= null;
         MessageProducer producer=null;
         try {
-            String brockURL = "failover://tcp://192.168.81.240:61616";
+            String brockURL = "failover://tcp://192.168.81.240:61616?jms.asd=123";
             //1、创建connectionFactory
             ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(brockURL);
 
-            //性能：
-            connectionFactory.setUseAsyncSend(true);//设置为异步发送
+            //性能：设置为异步发送(也可以使用tcp://192.168.81.240:61616?jms.useAsyncSend=true")
+            connectionFactory.setUseAsyncSend(true);
 
             //2、获取一个连接(ActiveMQConnection)
             connection = connectionFactory.createConnection();
@@ -43,8 +43,8 @@ public class Producer1 {
             //额外的一种提交方式，SESSION_TRANSACTED 不是在这里传入,而是通过connectionFactory.setTransactedIndividualAck();来设置
             session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             //4、创建一个destination
-            Queue queue = session.createQueue("first-queue");
-            //5、为queue创建一个生产者
+            Queue queue = session.createQueue("first-queue?producer.windowSize=1048576");
+            //5、为queue创建一个生产者[可创建多个生产者]
             producer = session.createProducer(queue);
             //6、发送一个消息(消息类别：查看Message的实现类[byte[],blob,Text,map、object、stream])
             TextMessage textMessage = session.createTextMessage("UseAsyncSend UseAsyncSend UseAsyncSend over...");

@@ -52,6 +52,11 @@ public class SessionConsumer {
             Thread.sleep(100000);
         }catch (Exception e){
             logger.error("获取消息异常",e);
+            try {
+                session.rollback();
+            } catch (JMSException e1) {
+                e1.printStackTrace();
+            }
         }finally {
             try {
                 if(null!=consumer)consumer.close();

@@ -59,7 +59,7 @@ public class Consumer1 {
             session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             //4、创建一个destination
             Queue queue = session.createQueue("first-queue");
-            //5、为queue创建一个生产者(ActiveMQDestination)
+            //5、为queue创建一个生产者(ActiveMQDestination)[可创建多个消费者]
             consumer = session.createConsumer(queue);
             //6、主动拉取消息
             Message message = consumer.receive();

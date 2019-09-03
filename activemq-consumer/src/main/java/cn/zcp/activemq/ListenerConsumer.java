@@ -57,15 +57,16 @@ public class ListenerConsumer implements MessageListener{
     public void onMessage(Message message) {
         try {
             System.out.println("被动接受消息: " + message);
-            if(message instanceof TextMessage){//获取文本类型的消息
+            //if(message instanceof TextMessage){//获取文本类型的消息
                 TextMessage textMessage = (TextMessage) message;
                 String text = textMessage.getText();
                 System.out.println("Received  Text: " + text);
-            }else if(message instanceof MapMessage){//获取MAP类型的消息
+            /*}else if(message instanceof MapMessage){//获取MAP类型的消息
                 Map<String, Object> contentMap = ((ActiveMQMapMessage) message).getContentMap();
                 System.out.println("Received  Map: " +contentMap);
-            }
-            message.acknowledge();//匹配CLIENT_ACKNOWLEDGE,消息执行完后执行提交
+            }*/
+            //测试当收到第12条的时候，直接提交，12之前的都被确认
+            if(text.contains("12"))message.acknowledge();//匹配CLIENT_ACKNOWLEDGE,消息执行完后执行提交
         } catch (JMSException e) {
             logger.error("获取消息异常",e);
         }
