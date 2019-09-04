@@ -41,6 +41,7 @@ public class SimpleProducer {
              */
             connection = connectionFactory.createConnection();
             /**
+             * 源码分析：
              * 检查是否连接上服务器,确保连接的信息发送过去
              * 创建一个临时Topic ActiveMQ.Advisory.TempQueue,ActiveMQ.Advisory.TempTopic 可以在管理界面Connections中Connector openwire查看
              */
@@ -51,20 +52,54 @@ public class SimpleProducer {
             /**
              * 源码分析：
              * 创建一个ActiveMQSession对象，如果transacted为true，后面参数没有用(使用默认Session.SESSION_TRANSACTED)
+             * 最后把Session信息发送给Broker
              */
             session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             //4、创建一个destination
+            /**
+             * 源码分析：
+             * 如果队列名称不是以 ID:开头(创建一个临时队列ActiveMQTempQueue) ,创建一个ActiveMQQueue对象
+             */
             Queue queue = session.createQueue("first-queue");
             //5、为queue创建一个生产者
+            /**
+             * 源码分析：
+             * 创建一个ActiveMQMessageProducer对象；
+             * 初始化一些参数如
+             * WindowSize：producer发送持久化消息是同步发送，发送是阻塞的，直到收到确认。同步发送肯定是有流量控制的。
+             *             producer默认是异步发送，异步发送不会等待broker的确认， 所以就需要考虑流量控制了：
+             *
+             * defaultDeliveryMode：默认消息持久化
+             * defaultPriority：消息默认等级4
+             *
+             * 最后把producer初始化的信息发送给Broker
+             */
             producer = session.createProducer(queue);
             producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);//设置消息非持久化
             producer.setPriority(0);//消息优先级（优先级分为10个级别,从0(最低)到9(最高).如果不设定优先级，默认级别是4. 需要注意的是，JMS provider 并不一定保证按照优先级的 顺序提交消息）
+            producer.setDisableMessageTimestamp(true);
+            producer.setTimeToLive(10000);//一定需要DisableMessageTimestamp为false才有意义
             //6、发送一个消息(消息类别：查看Message的实现类[byte[],blob,Text,map、object、stream、message(只有消息头与属性)])
             for (int i = 0; i <10 ; i++) {
                 TextMessage textMessage = session.createTextMessage("Hello Word"+i);
                 //textMessage.setJMSMessageID();JMSMessageID唯一识别每个消息的标识
                 textMessage.setStringProperty("zcp","test-属性"+i);//设置消息属性
                 //textMessage.setJMSExpiration(5);//未生效
+                /**
+                 * 源码分析：org.apache.activemq.ActiveMQSession#send(...)
+                 * 1、是否开启事物，如果开启则会生成一个事物ID
+                 * 2、设置消息是否持久化
+                 * 3、设置消息为非重发
+                 * 4、是否设置过期时间(DisableMessageTimestamp需要false、TimeToLive(TTL)
+                 * ..msg.onSend(); 设置消息体和消息属性为只读，防止篡改
+                 * 5、判断消息是进行异步发送还是同步发送，查看条件较多(具体看源码)
+                 * [
+                 *  如果onComplete没有设置，且发送超时时间小于0，且消息不需要反馈，且连接器不是同步发送模式，
+                 *  且消息非持久 化或者连接器是异步发送模式 //或者存在事务id的情况下，走异步发送，否则走同步发送
+                 * ]
+                 *   其实最终发送都是异步调用next.oneway(command)发送至Broker，只是异步的话直接返回，同步的话，是阻塞等待Broker的返回
+                 *   阻塞响应队列responseSlot 在org.apache.activemq.transport.FutureResponse#getResult(int)
+                 */
                 producer.send(textMessage);
             }
             logger.info("producer:send over !");
