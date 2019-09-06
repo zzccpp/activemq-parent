@@ -1,6 +1,7 @@
 package cn.zcp.activemq;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.ActiveMQMessageConsumer;
 import org.apache.activemq.command.ActiveMQMapMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +58,14 @@ public class SimpleConsumer {
             //4、创建一个destination
             Queue queue = session.createQueue("first-queue");
             //5、为queue创建一个生产者(ActiveMQDestination)
+            /**
+             * 源码分析：ActiveMQSession子对象提供了更多的构造方法
+             *  1、构建一个ActiveMQMessageConsumer对象，并初始化一些值[org.apache.activemq.ActiveMQMessageConsumer
+             *     #ActiveMQMessageConsumer(...)]，发送给broker构造方法createConsumer(Destination destination,
+             *     String messageSelector)可以过滤需要消费的内容
+             *  2、 this.session.addConsumer(this);
+             *      this.session.syncSendPacket(info);
+             */
             consumer = session.createConsumer(queue);
             //6、主动拉取消息
             while(true){

@@ -66,7 +66,7 @@ public class ListenerConsumer implements MessageListener{
                 System.out.println("Received  Map: " +contentMap);
             }*/
             //测试当收到第12条的时候，直接提交，12之前的都被确认
-            if(text.contains("12"))message.acknowledge();//匹配CLIENT_ACKNOWLEDGE,消息执行完后执行提交
+            //if(text.contains("12"))message.acknowledge();//匹配CLIENT_ACKNOWLEDGE,消息执行完后执行提交
         } catch (JMSException e) {
             logger.error("获取消息异常",e);
         }

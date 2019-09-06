@@ -1,6 +1,7 @@
 package cn.zcp.activemq;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.ScheduledMessage;
 import org.apache.activemq.command.ActiveMQMapMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +45,9 @@ public class SessionProducer {
             ActiveMQMapMessage message = new ActiveMQMapMessage();
             message.setString("xxx","zcp");
             message.setString("1111","zcp11");
-            message.setObject("obj", Arrays.asList("123123","213234"));
+            message.setObject("obj", Arrays.asList("123123","444444444"));
+            //使用session提交，延迟消息都会持久化，不会丢失
+            message.setLongProperty(ScheduledMessage.AMQ_SCHEDULED_DELAY,30000);
             producer.send(message);
             session.commit();
             logger.info("producer:send over !");
