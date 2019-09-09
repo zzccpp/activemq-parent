@@ -69,6 +69,42 @@ public class SimpleConsumer {
             consumer = session.createConsumer(queue);
             //6、主动拉取消息
             while(true){
+                /**
+                 * 源码分析:
+                 *  1、检查是否还设置有监听，有的话会抛出异常，不允许即主动获取消息又被动监听获取消息
+                 *
+                 *  clearDeliveredList()
+                 * 在上面的sendPullCommand方法中，会先调用clearDeliveredList方法，主要用来清理已经分发的消息链表
+                 *  deliveredMessages
+                 *  deliveredMessages，存储分发给消费者但还为应答的消息链表
+                 *  Ø 如果session是事务的，则会遍历deliveredMessage中的消息放入到previouslyDeliveredMessage中来做重发
+                 *  Ø 如果session是非事务的，根据ACK的模式来选择不同的应答操作
+                 *
+                 *  2、如果prefetch为0并且unconsumedMessages为空，则向broker发送一个pull command
+                 *  3、从unconsumedMessages[默认SimplePriorityMessageDispatchChannel对象]中pull阻塞的获取一条消息
+                 *     [unconsumedMessage表示未消费的消息，这里面预读取的消息大小为prefetchSize的值]
+                 *     [也会判断消息是否过期，过期了,会存放到deliveredMessages中]
+                 *     [消息是否重复接收,默认最大重试6次]
+                 *  4、发送ack消息给Broker
+                 *
+                 *
+                 *  beforeMessageIsConsumed()
+                 *  这里面主要是做消息消费之前的一些准备工作，如果ACK类型不是DUPS_OK_ACKNOWLEDGE或者队列模式（简单
+                 * 来说就是除了Topic和DupAck这两种情况），所有的消息先放到deliveredMessages链表的开头。并且如果当前是
+                 * 事务类型的会话，则判断transactedIndividualAck，如果为true，表示单条消息直接返回ack。
+                 * 否则，调用ackLater，批量应答, client端在消费消息后暂且不发送ACK，而是把它缓存下来(pendingACK)，等到这
+                 * 些消息的条数达到一定阀值时，只需要通过一个ACK指令把它们全部确认；这比对每条消息都逐个确认，在性能上
+                 * 要提高很多
+                 *
+                 * afterMessageIsConsumed()
+                 * 这个方法的主要作用是执行应答操作，这里面做以下几个操作
+                 * Ø 如果消息过期，则返回消息过期的ack
+                 * Ø 如果是事务类型的会话，则不做任何处理
+                 * Ø 如果是AUTOACK或者（DUPS_OK_ACK且是队列），并且是优化ack操作，则走批量确认ack
+                 * Ø 如果是DUPS_OK_ACK，则走ackLater逻辑
+                 * Ø 如果是CLIENT_ACK，则执行ackLater
+                 *
+                 */
                 Message message = consumer.receive();
                 System.out.println("message: " + message);
                 if(message instanceof TextMessage){//获取文本类型的消息

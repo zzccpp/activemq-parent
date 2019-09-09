@@ -1,6 +1,7 @@
 package cn.zcp.activemq;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.ScheduledMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,7 +93,7 @@ public class SimpleProducer {
             //producer.setDisableMessageTimestamp(false);
             //producer.setTimeToLive(3000);//一定需要DisableMessageTimestamp为false(默认)才有意义
             //6、发送一个消息(消息类别：查看Message的实现类[byte[],blob,Text,map、object、stream、message(只有消息头与属性)])
-            for (int i = 0; i <5 ; i++) {
+            for (int i = 0; i <100 ; i++) {
                 TextMessage textMessage = session.createTextMessage("Hello Word"+i);
                 //textMessage.setJMSMessageID();JMSMessageID唯一识别每个消息的标识
                 textMessage.setStringProperty("zcp","test-属性"+i);//设置消息属性

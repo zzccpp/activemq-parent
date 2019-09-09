@@ -1,6 +1,7 @@
 package cn.zcp.activemq;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.ActiveMQPrefetchPolicy;
 import org.apache.activemq.command.ActiveMQMapMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,10 +22,18 @@ public class ListenerConsumer implements MessageListener{
         Connection connection=null;
         Session session= null;
         MessageConsumer consumer=null;
+        MessageConsumer consumer1=null;
         try {
             String brockURL = "failover://tcp://192.168.81.240:61616";
             //1、创建connectionFactory
             ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(brockURL);
+
+            ActiveMQPrefetchPolicy prefetchPolicy = new ActiveMQPrefetchPolicy();
+            prefetchPolicy.setQueuePrefetch(25);
+            connectionFactory.setPrefetchPolicy(prefetchPolicy);
+
+            //connectionFactory.setOptimizeAcknowledge(true);
+
             //2、获取一个连接(ActiveMQConnection)
             connection = connectionFactory.createConnection();
             connection.start();
@@ -37,9 +46,22 @@ public class ListenerConsumer implements MessageListener{
             Queue queue = session.createQueue("first-queue");
             //5、为queue创建一个生产者(ActiveMQDestination)
             consumer = session.createConsumer(queue);
+            consumer1 = session.createConsumer(queue);
             //6、被动获取消息
             consumer.setMessageListener(new ListenerConsumer());
-            Thread.sleep(30000);
+            consumer1.setMessageListener(new MessageListener() {/**用于测试同一个Consumer下面Clinet_ack的问题*/
+                @Override
+                public void onMessage(Message message) {
+                    try {
+                        TextMessage textMessage = (TextMessage) message;
+                        String text = textMessage.getText();
+                        System.out.println("consumer1 Received  Text: " + text);
+                    } catch (JMSException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            Thread.sleep(120000);
         }catch (Exception e){
             logger.error("获取消息异常",e);
         }finally {
@@ -56,17 +78,28 @@ public class ListenerConsumer implements MessageListener{
     @Override
     public void onMessage(Message message) {
         try {
-            System.out.println("被动接受消息: " + message);
+            //System.out.println("被动接受消息: " + message);
             //if(message instanceof TextMessage){//获取文本类型的消息
                 TextMessage textMessage = (TextMessage) message;
                 String text = textMessage.getText();
-                System.out.println("Received  Text: " + text);
+                System.out.println(">>>consumer0 Received  Text: " + text);
             /*}else if(message instanceof MapMessage){//获取MAP类型的消息
                 Map<String, Object> contentMap = ((ActiveMQMapMessage) message).getContentMap();
                 System.out.println("Received  Map: " +contentMap);
             }*/
             //测试当收到第12条的时候，直接提交，12之前的都被确认
-            //if(text.contains("12"))message.acknowledge();//匹配CLIENT_ACKNOWLEDGE,消息执行完后执行提交
+            if(text.contains("10")){
+                message.acknowledge();
+                System.out.println("-----------10ack-------");
+            }
+            if(text.contains("30")){
+                message.acknowledge();
+                System.out.println("-----------30ack-------");
+            }
+            if(text.contains("50")){
+                message.acknowledge();
+                System.out.println("-----------50ack-------");
+            }
         } catch (JMSException e) {
             logger.error("获取消息异常",e);
         }
