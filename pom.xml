@@ -11,6 +11,8 @@
     <modules>
         <module>activemq-producer</module>
         <module>activemq-consumer</module>
+        <module>spring-consumer</module>
+        <module>spring-producer</module>
     </modules>
     <name>activemq-parent</name>
 

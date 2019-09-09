@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jms="http://www.springframework.org/schema/jms"
+	   xmlns:content="http://www.springframework.org/schema/context"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans-3.2.xsd http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms.xsd http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd">
+
+	<content:component-scan base-package="cn.zcp.activemq"/>
+	<content:annotation-config/>
+
+	<!--MQ监听-->
+	<!--<bean id="transportListener" class="com.vzoom.certtax.service.impl.MyMQTransportListener"/>-->
+	<!-- 配置ActiveMQ连接工厂 -->
+	<bean id="activeMQConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="userName" value="admin"/>
+		<property name="password" value="admin"/>
+		<property name="brokerURL" value="failover://tcp://192.168.81.240:61616"/>
+		<property name="useAsyncSend" value="true"/>
+		<!--<property name="transportListener" ref="transportListener"/>-->
+	</bean>
+	<!-- 配置ActiveMQ连接池 -->
+	<bean id="pooledConnectionFactory" class="org.apache.activemq.jms.pool.PooledConnectionFactory">
+		<property name="connectionFactory" ref="activeMQConnectionFactory"></property>
+		<property name="maxConnections" value="2"></property>
+	</bean>
+	<!-- 配置Sring管理的JMSConnectionFactory -->
+	<bean id="singleConnectionFactory" class="org.springframework.jms.connection.SingleConnectionFactory">
+		<property name="targetConnectionFactory" ref="pooledConnectionFactory"/>
+	</bean>
+	<!-- 创建采集队列 -->
+	<bean id="firstQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg>
+			<value>first-queue</value>
+		</constructor-arg>
+	</bean>
+	<!--设置监听-->
+	<jms:listener-container destination-type="queue" connection-factory="singleConnectionFactory">
+		<jms:listener destination="firstQueue" ref="firstQueueLister"/>
+	</jms:listener-container>
+</beans>
