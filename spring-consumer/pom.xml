@@ -33,11 +33,14 @@
             <artifactId>spring-context</artifactId>
             <version>5.1.8.RELEASE</version>
         </dependency>
+
+        <!--ActiveMQ依赖包-->
         <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>activemq-all</artifactId>
             <version>5.15.8</version>
         </dependency>
+
     </dependencies>
 
     <build>

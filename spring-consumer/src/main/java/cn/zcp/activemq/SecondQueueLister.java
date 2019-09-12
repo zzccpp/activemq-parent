@@ -14,14 +14,17 @@ import javax.jms.TextMessage;
  * @describe spring-consumer 监听队列
  */
 @Service
-public class FirstQueueLister implements MessageListener {
+public class SecondQueueLister implements MessageListener {
     @Override
     public void onMessage(Message message) {
 
         try {
             TextMessage textMessage = (TextMessage) message;
             String text = textMessage.getText();
-            System.out.println("------First: " + text);
+            System.out.println("------Second: " + text);
+            if(text.contains("20")){//由于没有设置prefect所以都被提交了
+                message.acknowledge();
+            }
         } catch (JMSException e) {
             e.printStackTrace();
         }

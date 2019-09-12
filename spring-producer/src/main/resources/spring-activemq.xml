@@ -36,22 +36,16 @@
 			<value>first-queue</value>
 		</constructor-arg>
 	</bean>
-	<!-- 第一个消息监听容器（Queue），配置连接工厂，监听的目标是demoQueueDestination，监听器是上面定义的监听器 --><!-- 自动获取 -->
-	<bean id="firstQueueListener" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+
+	<!--配置JmsTemplate-->
+	<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
 		<property name="connectionFactory" ref="cacheConnectionFactory"/>
-		<property name="destination" ref="firstQueue"/>
-		<property name="messageListener" ref="firstQueueLister"/>
-		<!--就是当设置sessionAcknowledgeMode为2时，虽然是客户端手动确认，但是却被spring自动确认了，造成设置无效。这时只需要把sessionAcknowledgeMode的值设置成activemq自定义的类型INDIVIDUAL_ACKNOWLEDGE = 4即可
-		源码：org.springframework.jms.listener.AbstractMessageListenerContainer.commitIfNecessary-->
-		<property name="sessionAcknowledgeMode" value="4"/>
-		<!--无法通过sessionAcknowledgeModeName来设置4,4是ActiveMQSession独有-->
-		<!--<property name="sessionAcknowledgeModeName" value=""/>-->
-	</bean>
-	<!-- 第一个消息监听容器（Queue），配置连接工厂，监听的目标是demoQueueDestination，监听器是上面定义的监听器 --><!-- 自动获取 -->
-	<bean id="secondQueueListener" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
-		<property name="connectionFactory" ref="cacheConnectionFactory"/>
-		<property name="destination" ref="firstQueue"/>
-		<property name="messageListener" ref="secondQueueLister"/>
-		<property name="sessionAcknowledgeMode" value="4"/>
+		<property name="defaultDestination" ref="firstQueue"/>
+		<!--这个配置很重要,未配置(优先级、持久化、过期时间)都不生效,源码查看:org.springframework.jms.core.JmsTemplate.doSend(...)-->
+		<property name="explicitQosEnabled" value="true"/>
+		<property name="deliveryMode" value="2"/> <!--消息持久化  1非持久化-->
+		<property name="priority" value="9"/>  <!--消息优先级0-9  9最高-->
+		<!-- 消息过期时间,一定需要messageTimestampEnabled(DisableMessageTimestamp为false(默认)才有意义)-->
+		<property name="timeToLive" value="1000"/>
 	</bean>
 </beans>
