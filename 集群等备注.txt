@@ -1,0 +1,77 @@
+1、配置不同的queue对应不同的死信队列
+    <policyEntry queue=">" producerFlowControl="true" memoryLimit="20mb">
+        <deadLetterStrategy>
+          <individualDeadLetterStrategy queuePrefix="DLQ." useQueueForQueueMessages="true" />
+        </deadLetterStrategy>
+    </policyEntry>
+
+2、配置mysql持久化方式
+    2.1增加
+        <bean id="mysqlds" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+                <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/activemq?relaxAutoCommit=true"/>
+                <property name="username" value="root"/>
+                <property name="password" value="123456"/>
+        </bean>
+    2.2更改
+        <persistenceAdapter>
+              <jdbcPersistenceAdapter dataSource="#mysqlds" createTablesOnStartup="true"/>
+        </persistenceAdapter>
+3、broker静态连接(真是生产不怎么用)
+    样例配置：查看apache-activemq-xxx\examples\conf
+
+    单向：如A节点信息流向B节点,只需要在B节点中配置A节点连接(其实B就相当于A节点的一个消费者)
+    <networkConnectors>
+           <networkConnector uri="static:(tcp://localhost:61616)" duplex="true"/>
+    </networkConnectors>
+
+    验证：往A中发送数据，然后连接B节点去消费数据
+    问题：当连接B点消费时，消息全部到B节点，A节点显示已经消费完，再连接A节点是无法消费到消息的
+
+    解决方案：
+        从 5.6 版本开始，在 destinationPolicy 上新增了一个选项replayWhenNoConsumers 属性，这个属性可以用来解决当 broker1 上有需
+    要转发的消息但是没有消费者时，把消息回流到它原始的 broker。同时把enableAudit 设置为 false，为了防止消息回流后被当作重复消息而不被分发
+    通过如下配置，在 activeMQ.xml 中。 分别在两台服务器都配置。即可完成消息回流处理
+        操作(1)：A、B节点都需要配置下面
+    <policyEntry queue=">" enableAudit="false">
+        <networkBridgeFilterFactory>
+            <conditionalNetworkBridgeFilterFactory replayWhenNoConsumers="true"/>
+        </networkBridgeFilterFactory>
+    </policyEntry>
+        操作(2)：B节点中uri增加自己消费uri
+    <networkConnectors>
+           <networkConnector uri="static:(tcp://localhost:61616,tcp://localhost:61618)" duplex="true"/>
+    </networkConnectors>
+
+    总结：例如往A中发送100条消息，程序连接B消费1条，则A节点消息全部同步到了B中，关闭程序B节点还剩下99条消息，程序连接A节点消费，则B因为没有消费者而消息全部同步到了A中,...以此类推!
+    [不过这种均衡负载是针对broker的，也就是说如果A上连了一个客户端，B上连了两个，那么A上的一个客户端消费的和B上的两个客户端加起来相等。
+     如果要三个客户端均分的话，需要给networkConnector标签添加一个属性，也就是在duplex="true"后面添加conduitSubscriptions="false"。它的意思是多个网络消费者是否被当做一个消费者来对待。--未验证]
+
+3、集群
+    思想：数据共享
+
+    说明：
+    activeMQ5.9 以后推出的基于 zookeeper 的 master/slave 主从实现。虽然ActiveMQ 不建议使用 LevelDB 作为存储，主要原因是，社区的主要精力都几
+    种在 kahadb 的维护上，包括 bug 修复等。所以并没有对 LevelDB 做太多的关注，所以他在是不做为推荐商用。但实际上在很多公司，仍然采用了
+    LevelDB+zookeeper 的高可用集群方案。而实际推荐的方案，仍然是基于KahaDB 的文件共享以及 Jdbc 的方式来实现
+
+    配置：使用levelDB存储方式,三个节点配置一样
+    <!--持久化使用google levelDB-->
+    <persistenceAdapter>
+        <replicatedLevelDB
+            directory="${activemq.data}/leveldb"
+            replicas="3"
+            bind="tcp://0.0.0.0:62621"
+            zkAddress="192.168.1.200:2181,192.168.1.201:2181,192.168.1.202:2181"
+            hostname="200"
+            zkPath="/activemq/leveldb-stores"/>
+    </persistenceAdapter>
+    配置说明：
+    directory：表示 LevelDB 所在的主工作目录
+    replicas:表示总的节点数。比如我们的及群众有3个节点，且最多允许一个节点出现故障，那么这个值可以设置为2，也可以设置为 3. 因为计算公式为
+    (replicas/2)+1. 如果我们设置为 4， 就表示不允许 3 个节点的任何一个节点出错。
+    bind：当当前的节点为 master 时，它会根据绑定好的地址和端口来进行主从复制协议
+    zkAddress：zk 的地址
+    hostname：本机 IP
+    sync：在认为消息被消费完成前，同步信息所存储的策略。
+    local_mem/local_disk
