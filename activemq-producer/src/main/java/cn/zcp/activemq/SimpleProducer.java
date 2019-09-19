@@ -22,7 +22,9 @@ public class SimpleProducer {
         Session session= null;
         MessageProducer producer=null;
         try {
-            String brockURL = "tcp://192.168.81.240:61616";//?jms.sendTimeout=3000   failover://
+            String brockURL = "tcp://localhost:61616";//?jms.sendTimeout=3000   failover://
+            //ActiveMQ的客户端只能访问Master的Broker,其他处于Slave的Broker不能访问，所以客户端连接的Broker应该使用failover协议(失败转移)
+            brockURL="failover:(tcp://192.168.81.240:61616,tcp://192.168.81.240:61626,tcp://192.168.81.240:61636)?randomize=false";
             //1、创建connectionFactory
             /**源码分析：
              * 1.1、创建ActiveMQConnectionFactory对象,初始化参数
@@ -88,7 +90,7 @@ public class SimpleProducer {
              * 最后把producer初始化的信息发送给Broker
              */
             producer = session.createProducer(queue);
-            producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);//设置消息非持久化
+            producer.setDeliveryMode(DeliveryMode.PERSISTENT);//设置消息非持久化
             producer.setPriority(0);//消息优先级（优先级分为10个级别,从0(最低)到9(最高).如果不设定优先级，默认级别是4. 需要注意的是，JMS provider 并不一定保证按照优先级的 顺序提交消息）
             //producer.setDisableMessageTimestamp(false);
             //producer.setTimeToLive(3000);//一定需要DisableMessageTimestamp为false(默认)才有意义

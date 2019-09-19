@@ -22,7 +22,7 @@ public class SessionConsumer {
         Session session= null;
         MessageConsumer consumer=null;
         try {
-            String brockURL = "failover://tcp://192.168.81.240:61616";
+            String brockURL = "failover://tcp://localhost:61618";
             //1、创建connectionFactory
             ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(brockURL);
             //2、获取一个连接(ActiveMQConnection)

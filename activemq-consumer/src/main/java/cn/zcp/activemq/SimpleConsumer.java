@@ -45,7 +45,9 @@ public class SimpleConsumer {
         Session session= null;
         MessageConsumer consumer=null;
         try {
-            String brockURL = "failover://tcp://192.168.81.240:61616";
+            String brockURL = "failover://tcp://localhost:61616";
+            //ActiveMQ的客户端只能访问Master的Broker,其他处于Slave的Broker不能访问，所以客户端连接的Broker应该使用failover协议(失败转移)
+            brockURL="failover:(tcp://192.168.81.240:61616,tcp://192.168.81.240:61626,tcp://192.168.81.240:61636)?randomize=false";
             //1、创建connectionFactory
             ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(brockURL);
             //2、获取一个连接(ActiveMQConnection)

@@ -17,7 +17,7 @@
         <persistenceAdapter>
               <jdbcPersistenceAdapter dataSource="#mysqlds" createTablesOnStartup="true"/>
         </persistenceAdapter>
-3、broker静态连接(真是生产不怎么用)
+3、broker静态连接(真实生产不怎么用)
     样例配置：查看apache-activemq-xxx\examples\conf
 
     单向：如A节点信息流向B节点,只需要在B节点中配置A节点连接(其实B就相当于A节点的一个消费者)
@@ -48,7 +48,7 @@
      如果要三个客户端均分的话，需要给networkConnector标签添加一个属性，也就是在duplex="true"后面添加conduitSubscriptions="false"。它的意思是多个网络消费者是否被当做一个消费者来对待。--未验证]
 
 3、集群
-    思想：数据共享
+    思想：数据共享,master-slave方式
 
     说明：
     activeMQ5.9 以后推出的基于 zookeeper 的 master/slave 主从实现。虽然ActiveMQ 不建议使用 LevelDB 作为存储，主要原因是，社区的主要精力都几
@@ -56,22 +56,36 @@
     LevelDB+zookeeper 的高可用集群方案。而实际推荐的方案，仍然是基于KahaDB 的文件共享以及 Jdbc 的方式来实现
 
     配置：使用levelDB存储方式,三个节点配置一样
-    <!--持久化使用google levelDB-->
-    <persistenceAdapter>
-        <replicatedLevelDB
-            directory="${activemq.data}/leveldb"
-            replicas="3"
-            bind="tcp://0.0.0.0:62621"
-            zkAddress="192.168.1.200:2181,192.168.1.201:2181,192.168.1.202:2181"
-            hostname="200"
-            zkPath="/activemq/leveldb-stores"/>
-    </persistenceAdapter>
-    配置说明：
-    directory：表示 LevelDB 所在的主工作目录
-    replicas:表示总的节点数。比如我们的及群众有3个节点，且最多允许一个节点出现故障，那么这个值可以设置为2，也可以设置为 3. 因为计算公式为
-    (replicas/2)+1. 如果我们设置为 4， 就表示不允许 3 个节点的任何一个节点出错。
-    bind：当当前的节点为 master 时，它会根据绑定好的地址和端口来进行主从复制协议
-    zkAddress：zk 的地址
-    hostname：本机 IP
-    sync：在认为消息被消费完成前，同步信息所存储的策略。
-    local_mem/local_disk
+        步骤1：
+            <!--持久化使用google levelDB-->
+            <persistenceAdapter>
+               <!-- <kahaDB directory="${activemq.data}/kahadb"/>-->
+                    <replicatedLevelDB
+                    directory="${activemq.data}/leveldb"
+                    replicas="3"
+                    bind="tcp://0.0.0.0:62621"    //注意:端口号不冲突
+                    zkAddress="192.168.81.240:2181"//集群的话添加所有zk节点,逗号分隔
+                    hostname="192.168.81.240"     //当前主机IP
+                    zkPath="/activemq/leveldb-stores"/>
+            </persistenceAdapter>
+            配置说明：
+            directory：表示 LevelDB 所在的主工作目录
+            replicas:表示总的节点数。比如我们的集群有3个节点，且最多允许一个节点出现故障，那么这个值可以设置为2，也可以设置为 3. 因为计算公式为
+            (replicas/2)+1. 如果我们设置为 4， 就表示不允许 3 个节点的任何一个节点出错。
+            bind：当当前的节点为 master 时，它会根据绑定好的地址和端口来进行主从复制协议
+            zkAddress：zk 的地址
+            hostname：本机 IP
+            sync：在认为消息被消费完成前，同步信息所存储的策略。
+            local_mem/local_disk
+        步骤2：
+            可以把<transportConnectors>节点下除了openwire类型，都注释关掉
+            如果开启后台管理界面：注意jetty端口号不要冲突
+    现象：
+        当三个节点都活着：zk中数据
+        [zk: localhost:2181(CONNECTED) 0] ls /activemq/leveldb-stores
+        [00000000017, 00000000018, 00000000016]
+
+        MQ管理页面只有一个能打开(Master),当停止某个节点的时候，会自动选举Master，其实按照zk上的顺序来选举的,
+
+        程序操作：使用failover机制,动态切换连接可用的节点(Master)
+        String brockURL="failover:(tcp://192.168.81.240:61616,tcp://192.168.81.240:61626,tcp://192.168.81.240:61636)?randomize=false";
